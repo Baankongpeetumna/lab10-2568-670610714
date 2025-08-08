@@ -1,22 +1,38 @@
 import { UserCard } from "../components/UserCard";
 import { cleanUser } from "../libs/CleanUser";
 import axios from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 export default function RandomUserPage() {
-  const [users, setUsers] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [genAmount, setGenAmount] = useState(1);
+  const [genAmount, setGenAmount] = useState<string>("1");
+
+  // โหลดเลขเก่าจาก localStorage ตอนเปิดหน้า
+  useEffect(() => {
+    const savedAmount = localStorage.getItem("genAmount");
+    if (savedAmount !== null) {
+      setGenAmount(savedAmount);
+    }
+  }, []);
+
+  
+  const handleAmountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setGenAmount(value);
+    localStorage.setItem("genAmount", value);
+  };
 
   const generateBtnOnClick = async () => {
+    const amountNum = Number(genAmount);
     setIsLoading(true);
     const resp = await axios.get(
-      `https://randomuser.me/api/?results=${genAmount}`
+      `https://randomuser.me/api/?results=${amountNum}`
     );
+    const rawUsers = resp.data.results;
+    const cleanUsers = rawUsers.map((u: any) => cleanUser(u));
+    setUsers(cleanUsers);
     setIsLoading(false);
-    const users = resp.data.results;
-    //Your code here
-    //Process result from api response with map function. Tips use function from /src/libs/CleanUser
-    //Then update state with function : setUsers(...)
   };
 
   return (
@@ -28,7 +44,8 @@ export default function RandomUserPage() {
           className="form-control text-center"
           style={{ maxWidth: "100px" }}
           type="number"
-          onChange={(event: any) => setGenAmount(event.target.value)}
+          min={1}
+          onChange={handleAmountChange}
           value={genAmount}
         />
         <button className="btn btn-dark" onClick={generateBtnOnClick}>
@@ -38,7 +55,17 @@ export default function RandomUserPage() {
       {isLoading && (
         <p className="display-6 text-center fst-italic my-4">Loading ...</p>
       )}
-      {users && !isLoading && users.map(/*code map rendering UserCard here */)}
+      {users.length > 0 &&
+        !isLoading &&
+        users.map((user) => (
+          <UserCard
+            key={user.email}
+            name={user.name}
+            imgUrl={user.imgUrl}
+            address={user.address}
+            email={user.email}
+          />
+        ))}
     </div>
   );
 }
